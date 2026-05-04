@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SSDA.Core.Auth;
 using SSDA.Core.Models;
 using SSDA.Core.Services;
 using SSDA.Core.Web;
@@ -27,6 +28,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public CodeViewModel CodeVm { get; }
     public ConfirmationsViewModel ConfirmationsVm { get; }
     public PassphraseViewModel PassphraseVm { get; }
+    public LoginViewModel LoginVm { get; }
 
     [ObservableProperty]
     private AccountViewModel? _selectedAccount;
@@ -43,20 +45,75 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _statusText = string.Empty;
 
+    private readonly SteamLoginClient _login;
+
     public MainWindowViewModel(
         ManifestStore store,
         ISystemClock? clock = null,
-        SteamWebContextRegistry? webRegistry = null)
+        SteamWebContextRegistry? webRegistry = null,
+        SteamLoginClient? loginClient = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _ownsRegistry = webRegistry is null;
         _webRegistry = webRegistry ?? new SteamWebContextRegistry();
+        _login = loginClient ?? new SteamLoginClient();
         CodeVm = new CodeViewModel(clock);
         ConfirmationsVm = new ConfirmationsViewModel(
             RefreshConfirmationsAsync,
             BulkRespondAsync);
         PassphraseVm = new PassphraseViewModel(TryUnlock);
+        LoginVm = new LoginViewModel(LoginAsync);
         HasManifest = _store.ManifestExists();
+    }
+
+    /// <summary>
+    /// Opens the re-login modal for the currently-selected account (or a specific one,
+    /// when wired from the accounts list).
+    /// </summary>
+    [RelayCommand]
+    private void OpenLogin(AccountViewModel? account)
+    {
+        var target = account ?? SelectedAccount;
+        if (target is null) return;
+        LoginVm.Open(target);
+    }
+
+    /// <summary>
+    /// Authenticates the supplied account against Steam, captures the new
+    /// AccessToken / RefreshToken, persists the updated maFile, and refreshes the
+    /// confirmations feed.
+    /// </summary>
+    public async Task LoginAsync(
+        AccountViewModel account, string password, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentException("Password is required.", nameof(password));
+        if (string.IsNullOrEmpty(account.Account.AccountName))
+            throw new InvalidOperationException("Account has no username (account_name).");
+        if (string.IsNullOrEmpty(account.Account.SharedSecret))
+            throw new InvalidOperationException("Account has no shared_secret.");
+
+        var authenticator = new SharedSecretAuthenticator(
+            account.Account.SharedSecret!, _webRegistry.TimeAligner);
+
+        var result = await _login.LoginAsync(
+            account.Account.AccountName!, password, authenticator, ct).ConfigureAwait(true);
+
+        // Update in-memory session and persist to disk under the same passkey.
+        account.Account.Session ??= new SessionData();
+        account.Account.Session.SteamID = result.SteamID;
+        account.Account.Session.AccessToken = result.AccessToken;
+        account.Account.Session.RefreshToken = result.RefreshToken;
+
+        _store.SaveAccount(_manifest, account.Account, _passkey);
+        _store.SaveManifest(_manifest);
+
+        account.HasSession = true;
+        account.SteamIdText = result.SteamID.ToString();
+
+        // Reload confirmations now that the access token is fresh.
+        await SafeRefreshConfirmationsAsync().ConfigureAwait(true);
     }
 
     /// <summary>Loads the manifest in plaintext; sets <see cref="IsLocked"/> if encrypted.</summary>

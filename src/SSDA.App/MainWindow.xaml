@@ -119,6 +119,11 @@
                     <ContentControl Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <views:PassphraseView DataContext="{Binding PassphraseVm}" />
                     </ContentControl>
+
+                    <!--  Re-login overlay  -->
+                    <ContentControl Visibility="{Binding LoginVm.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <views:LoginView DataContext="{Binding LoginVm}" />
+                    </ContentControl>
                 </Grid>
             </Border>
         </Grid>

@@ -69,6 +69,12 @@
                         <TextBlock Style="{StaticResource LabelTextBlock}" Text="ПОДТВЕРЖДЕНИЯ" />
                     </Button.Content>
                 </Button>
+                <Button Style="{StaticResource NavButton}"
+                        Command="{Binding NavigateToSettingsCommand}">
+                    <Button.Content>
+                        <TextBlock Style="{StaticResource LabelTextBlock}" Text="НАСТРОЙКИ" />
+                    </Button.Content>
+                </Button>
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal"
@@ -106,6 +112,15 @@
                                             <Setter.Value>
                                                 <DataTemplate>
                                                     <views:ConfirmationsView DataContext="{Binding ConfirmationsVm}" />
+                                                </DataTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ActivePage}" Value="Settings">
+                                        <Setter Property="ContentTemplate">
+                                            <Setter.Value>
+                                                <DataTemplate>
+                                                    <views:SettingsView DataContext="{Binding SettingsVm}" />
                                                 </DataTemplate>
                                             </Setter.Value>
                                         </Setter>

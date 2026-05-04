@@ -1,0 +1,160 @@
+<UserControl x:Class="SSDA.App.Views.LinkAuthenticatorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SSDA.App.ViewModels"
+             xmlns:cnv="clr-namespace:SSDA.App.Converters"
+             d:DataContext="{d:DesignInstance vm:LinkAuthenticatorViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <UserControl.Resources>
+        <cnv:InverseBooleanConverter x:Key="InverseBool" />
+        <cnv:EnumEqualsToBooleanConverter x:Key="EnumEqual" />
+    </UserControl.Resources>
+    <Grid Background="#80000000">
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{StaticResource SurfaceElev2Brush}"
+                BorderBrush="{StaticResource HairlineBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
+                Padding="28"
+                Width="480">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H1TextBlock}"
+                           Text="Привязать авторизатор" />
+
+                <!--  Step 1: Credentials  -->
+                <StackPanel Margin="0,16,0,0">
+                    <StackPanel.Visibility>
+                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Credentials" />
+                    </StackPanel.Visibility>
+                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,18"
+                               Text="Введите имя пользователя и пароль Steam. К аккаунту НЕ должен быть привязан Steam Guard." />
+
+                    <TextBlock Style="{StaticResource LabelTextBlock}" Text="ИМЯ ПОЛЬЗОВАТЕЛЯ" />
+                    <TextBox Style="{StaticResource GlassTextBox}"
+                             Margin="0,8,0,12"
+                             Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}" />
+
+                    <TextBlock Style="{StaticResource LabelTextBlock}" Text="ПАРОЛЬ" />
+                    <PasswordBox x:Name="PassBox"
+                                 Style="{StaticResource GlassPasswordBox}"
+                                 Margin="0,8,0,0"
+                                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                                 KeyDown="PassBox_KeyDown" />
+                </StackPanel>
+
+                <!--  Step 2: SMS  -->
+                <StackPanel Margin="0,16,0,0">
+                    <StackPanel.Visibility>
+                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Sms" />
+                    </StackPanel.Visibility>
+                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,18"
+                               Text="Steam отправил SMS с активационным кодом на номер, привязанный к аккаунту. Введите его сюда." />
+
+                    <TextBlock Style="{StaticResource LabelTextBlock}" Text="КОД ИЗ SMS" />
+                    <TextBox x:Name="SmsBox"
+                             Style="{StaticResource GlassTextBox}"
+                             Margin="0,8,0,0"
+                             FontFamily="{StaticResource MonoFontFamily}"
+                             FontSize="20"
+                             MaxLength="10"
+                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                             KeyDown="SmsBox_KeyDown" />
+                </StackPanel>
+
+                <!--  Step 3: Revocation  -->
+                <StackPanel Margin="0,16,0,0">
+                    <StackPanel.Visibility>
+                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Revocation" />
+                    </StackPanel.Visibility>
+                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,12"
+                               Text="Авторизатор привязан. Сохраните код восстановления — он понадобится, если потеряете доступ к SSDA." />
+
+                    <TextBlock Style="{StaticResource LabelTextBlock}" Text="REVOCATION CODE" />
+                    <TextBlock Style="{StaticResource CodeDisplayTextBlock}"
+                               Margin="0,4,0,0"
+                               Text="{Binding RevocationCode}" />
+                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                               Margin="0,8,0,0"
+                               TextWrapping="Wrap"
+                               FontSize="11"
+                               Text="Запишите код в безопасное место. Без него вы НЕ сможете отвязать авторизатор от аккаунта." />
+                </StackPanel>
+
+                <!--  Step 4: Done  -->
+                <StackPanel Margin="0,16,0,0">
+                    <StackPanel.Visibility>
+                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Done" />
+                    </StackPanel.Visibility>
+                    <TextBlock Style="{StaticResource BodyTextBlock}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,18"
+                               Text="Готово. Аккаунт добавлен в список и сразу доступен для генерации 2FA-кодов." />
+                </StackPanel>
+
+                <!--  Error  -->
+                <TextBlock Style="{StaticResource BodyTextBlock}"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,8,0,0"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Text="{Binding ErrorMessage}" />
+
+                <!--  Action row  -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                    <Button Style="{StaticResource GlassButton}"
+                            Margin="0,0,8,0"
+                            Content="ОТМЕНА"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                            Command="{Binding CancelCommand}" />
+
+                    <!--  Step 1 next button  -->
+                    <Button Style="{StaticResource GlassPrimaryButton}"
+                            Content="ДАЛЕЕ"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                            Click="Credentials_Click">
+                        <Button.Visibility>
+                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Credentials" />
+                        </Button.Visibility>
+                    </Button>
+
+                    <!--  Step 2 next button  -->
+                    <Button Style="{StaticResource GlassPrimaryButton}"
+                            Content="ПОДТВЕРДИТЬ"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                            Click="Sms_Click">
+                        <Button.Visibility>
+                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Sms" />
+                        </Button.Visibility>
+                    </Button>
+
+                    <!--  Step 3 next button  -->
+                    <Button Style="{StaticResource GlassPrimaryButton}"
+                            Content="Я СОХРАНИЛ КОД"
+                            Command="{Binding RevocationAcknowledgedCommand}">
+                        <Button.Visibility>
+                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Revocation" />
+                        </Button.Visibility>
+                    </Button>
+
+                    <!--  Step 4 finish button  -->
+                    <Button Style="{StaticResource GlassPrimaryButton}"
+                            Content="ГОТОВО"
+                            Command="{Binding FinishCommand}">
+                        <Button.Visibility>
+                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Done" />
+                        </Button.Visibility>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

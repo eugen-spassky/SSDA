@@ -124,6 +124,11 @@
                     <ContentControl Visibility="{Binding LoginVm.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <views:LoginView DataContext="{Binding LoginVm}" />
                     </ContentControl>
+
+                    <!--  Link-authenticator overlay  -->
+                    <ContentControl Visibility="{Binding LinkVm.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <views:LinkAuthenticatorView DataContext="{Binding LinkVm}" />
+                    </ContentControl>
                 </Grid>
             </Border>
         </Grid>

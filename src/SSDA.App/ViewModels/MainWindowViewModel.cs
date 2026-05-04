@@ -105,8 +105,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         account.Account.Session.SteamID = result.SteamID;
         account.Account.Session.AccessToken = result.AccessToken;
         account.Account.Session.RefreshToken = result.RefreshToken;
-        if (string.IsNullOrEmpty(account.Account.AccountName))
-            account.Account.AccountName = result.AccountName;
 
         _store.SaveAccount(_manifest, account.Account, _passkey);
         _store.SaveManifest(_manifest);

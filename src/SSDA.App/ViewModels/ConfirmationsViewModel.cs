@@ -8,11 +8,11 @@ namespace SSDA.App.ViewModels;
 /// <summary>
 /// Backing model for the «All confirmations» page. Holds the merged feed of mobile
 /// confirmations across every loaded account and lets the user filter by type.
-/// The actual fetch + accept/deny flow ships in the next PR — this PR wires up the
-/// page so the UX is reachable and the rendering is finalised.
 /// </summary>
 public sealed partial class ConfirmationsViewModel : ObservableObject
 {
+    private readonly Func<CancellationToken, Task>? _refresh;
+
     public ObservableCollection<ConfirmationViewModel> All { get; } = new();
     public ObservableCollection<ConfirmationViewModel> Visible { get; } = new();
 
@@ -22,8 +22,17 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isEmpty = true;
 
-    public ConfirmationsViewModel()
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private string _lastError = string.Empty;
+
+    public ConfirmationsViewModel() : this(null) { }
+
+    public ConfirmationsViewModel(Func<CancellationToken, Task>? refresh)
     {
+        _refresh = refresh;
         All.CollectionChanged += (_, _) => RebuildVisible();
         RebuildVisible();
     }
@@ -35,12 +44,17 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
         foreach (var c in confirmations) All.Add(c);
     }
 
+    public void SetLoading(bool value) => IsLoading = value;
+
     [RelayCommand]
     private void SetFilter(string? filter)
     {
         if (Enum.TryParse<ConfirmationFilter>(filter, ignoreCase: true, out var parsed))
             ActiveFilter = parsed;
     }
+
+    [RelayCommand]
+    private Task Refresh() => _refresh?.Invoke(CancellationToken.None) ?? Task.CompletedTask;
 
     partial void OnActiveFilterChanged(ConfirmationFilter value) => RebuildVisible();
 
@@ -60,11 +74,11 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
         ConfirmationFilter.All => true,
         ConfirmationFilter.Trades => type == ConfirmationType.Trade,
         ConfirmationFilter.Market => type == ConfirmationType.MarketListing,
-        ConfirmationFilter.Login => type == ConfirmationType.AccountRecovery,
+        ConfirmationFilter.Login => type == ConfirmationType.AccountAuthentication,
         ConfirmationFilter.Other =>
             type != ConfirmationType.Trade
             && type != ConfirmationType.MarketListing
-            && type != ConfirmationType.AccountRecovery,
+            && type != ConfirmationType.AccountAuthentication,
         _ => true,
     };
 }

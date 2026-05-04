@@ -34,6 +34,8 @@ public sealed partial class ConfirmationViewModel : ObservableObject
             ConfirmationType.PhoneNumberChange => "PHONE",
             ConfirmationType.AccountRecovery => "RECOVERY",
             ConfirmationType.FeatureOptOut => "OPT-OUT",
+            ConfirmationType.AccountAuthentication => "LOGIN",
+            ConfirmationType.ApiKeyCreation => "API KEY",
             ConfirmationType.Test => "TEST",
             _ => "OTHER",
         };

@@ -9,21 +9,36 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
     <UserControl.Resources>
         <cnv:EnumEqualsToBooleanConverter x:Key="EnumEqualsToBool" />
+        <cnv:InverseBooleanConverter x:Key="InverseBool" />
+        <cnv:StringNotEmptyToVisibilityConverter x:Key="StringToVisibility" />
     </UserControl.Resources>
 
     <Grid Margin="32,24,32,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0">
-            <TextBlock Style="{StaticResource H1TextBlock}" Text="Все подтверждения" />
-            <TextBlock Style="{StaticResource BodyMutedTextBlock}"
-                       Margin="0,4,0,0"
-                       Text="Трейды, маркет, логин, телефон, восстановление." />
-        </StackPanel>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource H1TextBlock}" Text="Все подтверждения" />
+                <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                           Margin="0,4,0,0"
+                           Text="Трейды, маркет, логин, телефон, восстановление." />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Style="{StaticResource GlassButton}"
+                    VerticalAlignment="Center"
+                    Content="ОБНОВИТЬ"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}"
+                    Command="{Binding RefreshCommand}" />
+        </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,18,0,0">
             <Button Style="{StaticResource GlassButton}"
@@ -43,43 +58,62 @@
                     Command="{Binding SetFilterCommand}" CommandParameter="Other" />
         </StackPanel>
 
-        <Grid Grid.Row="2" Margin="0,20,0,0">
-            <ItemsControl ItemsSource="{Binding Visible}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:ConfirmationViewModel}">
-                        <Border Background="{StaticResource SurfaceElev1Brush}"
-                                BorderBrush="{StaticResource HairlineBrush}"
-                                BorderThickness="1"
-                                CornerRadius="{StaticResource SurfaceCornerRadius}"
-                                Margin="0,0,0,8"
-                                Padding="16,14">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Style="{StaticResource LabelTextBlock}"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding KindLabel}" />
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Style="{StaticResource BodyTextBlock}"
-                                               FontWeight="SemiBold"
-                                               Text="{Binding Headline}" />
-                                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
-                                               Margin="0,2,0,0"
-                                               Text="{Binding Summary}" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="2"
-                                           Style="{StaticResource BodyMutedTextBlock}"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding AgeText}" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+        <Border Grid.Row="2"
+                Margin="0,12,0,0"
+                Padding="14,8"
+                Background="{StaticResource SurfaceElev1Brush}"
+                BorderBrush="{StaticResource HairlineBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource ControlCornerRadius}"
+                Visibility="{Binding LastError, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                       TextWrapping="Wrap"
+                       Text="{Binding LastError}" />
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,16,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Visible}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:ConfirmationViewModel}">
+                            <Border Background="{StaticResource SurfaceElev1Brush}"
+                                    BorderBrush="{StaticResource HairlineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource SurfaceCornerRadius}"
+                                    Margin="0,0,0,8"
+                                    Padding="16,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Style="{StaticResource LabelTextBlock}"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding KindLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Style="{StaticResource BodyTextBlock}"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding Headline}" />
+                                        <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                                                   Margin="0,2,0,0"
+                                                   Text="{Binding Summary}" />
+                                        <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                                                   FontSize="11"
+                                                   Margin="0,4,0,0"
+                                                   Text="{Binding AccountName}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2"
+                                               Style="{StaticResource BodyMutedTextBlock}"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding AgeText}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -93,8 +127,20 @@
                 <TextBlock Style="{StaticResource BodyMutedTextBlock}"
                            HorizontalAlignment="Center"
                            Margin="0,2,0,0"
-                           Text="Получение списка с Steam подключим в следующем PR." />
+                           Text="Подтверждения подтянутся из Steam при загрузке аккаунта или по кнопке «Обновить»." />
             </StackPanel>
+
+            <Border HorizontalAlignment="Center" VerticalAlignment="Top"
+                    Margin="0,8,0,0"
+                    Padding="14,6"
+                    Background="{StaticResource SurfaceElev2Brush}"
+                    BorderBrush="{StaticResource HairlineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource PillCornerRadius}"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Style="{StaticResource LabelTextBlock}"
+                           Text="ЗАГРУЗКА…" />
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

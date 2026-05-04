@@ -31,7 +31,11 @@ public partial class MainWindow : Window
             _vm.LoadManifest();
             _vm.CodeVm.Start();
         };
-        Closed += (_, _) => _vm.CodeVm.Dispose();
+        Closed += (_, _) =>
+        {
+            _vm.CodeVm.Dispose();
+            _vm.Dispose();
+        };
     }
 
     private void Min_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

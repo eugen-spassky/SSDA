@@ -17,6 +17,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ManifestStore _store;
     private readonly SteamWebContextRegistry _webRegistry;
     private readonly bool _ownsRegistry;
+    private readonly object _refreshGate = new();
+    private CancellationTokenSource? _refreshCts;
     private Manifest _manifest = new();
     private string? _passkey;
 
@@ -132,6 +134,16 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (Accounts.Count == 0) return;
 
+        CancellationTokenSource linked;
+        lock (_refreshGate)
+        {
+            try { _refreshCts?.Cancel(); } catch (ObjectDisposedException) { }
+            _refreshCts?.Dispose();
+            linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _refreshCts = linked;
+        }
+        var token = linked.Token;
+
         ConfirmationsVm.SetLoading(true);
         var aggregate = new List<ConfirmationViewModel>();
         var errors = new List<string>();
@@ -139,11 +151,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             foreach (var account in Accounts)
             {
+                token.ThrowIfCancellationRequested();
                 if (!account.HasSession) continue;
                 try
                 {
                     var client = _webRegistry.GetMobileConfClient(account.Account);
-                    var list = await client.ListAsync(account.Account, ct).ConfigureAwait(true);
+                    var list = await client.ListAsync(account.Account, token).ConfigureAwait(true);
                     foreach (var c in list)
                         aggregate.Add(new ConfirmationViewModel(c, account.DisplayName));
                 }
@@ -155,7 +168,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     errors.Add($"{account.DisplayName}: {ex.Message}");
                 }
-                catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+                catch (TaskCanceledException) when (!token.IsCancellationRequested)
                 {
                     errors.Add($"{account.DisplayName}: timeout");
                 }
@@ -167,18 +180,37 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             ConfirmationsVm.Replace(aggregate);
             ConfirmationsVm.LastError = string.Join(" · ", errors);
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            // Superseded by a newer refresh; let it own the UI state.
+            return;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             ConfirmationsVm.LastError = ex.Message;
         }
         finally
         {
-            ConfirmationsVm.SetLoading(false);
+            lock (_refreshGate)
+            {
+                if (_refreshCts == linked)
+                {
+                    ConfirmationsVm.SetLoading(false);
+                    _refreshCts = null;
+                    linked.Dispose();
+                }
+            }
         }
     }
 
     public void Dispose()
     {
+        lock (_refreshGate)
+        {
+            try { _refreshCts?.Cancel(); } catch (ObjectDisposedException) { }
+            _refreshCts?.Dispose();
+            _refreshCts = null;
+        }
         if (_ownsRegistry) _webRegistry.Dispose();
     }
 

@@ -121,9 +121,22 @@ public sealed partial class LinkAuthenticatorViewModel : ObservableObject
             switch (result)
             {
                 case FinalizeResult.Success:
-                    _persist?.Invoke(_ctx);
+                    // Surface the revocation code BEFORE persisting. Steam already considers
+                    // the authenticator active at this point, so the secrets MUST reach the
+                    // user even if writing the maFile to disk fails — otherwise they are
+                    // locked out of detaching the authenticator forever.
                     RevocationCode = _ctx.Account.RevocationCode ?? string.Empty;
                     Step = LinkStep.Revocation;
+                    try
+                    {
+                        _persist?.Invoke(_ctx);
+                    }
+                    catch (Exception persistEx)
+                    {
+                        ErrorMessage =
+                            "Не удалось сохранить maFile на диск: " + persistEx.Message +
+                            ". Обязательно сохраните код восстановления вручную!";
+                    }
                     break;
                 case FinalizeResult.BadSMSCode:
                     ErrorMessage = "Неверный SMS-код, попробуйте ещё раз.";

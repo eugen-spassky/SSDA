@@ -12,6 +12,7 @@ namespace SSDA.App.ViewModels;
 public sealed partial class ConfirmationsViewModel : ObservableObject
 {
     private readonly Func<CancellationToken, Task>? _refresh;
+    private readonly Func<IReadOnlyList<ConfirmationViewModel>, bool, CancellationToken, Task>? _bulkRespond;
 
     public ObservableCollection<ConfirmationViewModel> All { get; } = new();
     public ObservableCollection<ConfirmationViewModel> Visible { get; } = new();
@@ -26,13 +27,19 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
     private bool _isLoading;
 
     [ObservableProperty]
+    private bool _isBulkBusy;
+
+    [ObservableProperty]
     private string _lastError = string.Empty;
 
-    public ConfirmationsViewModel() : this(null) { }
+    public ConfirmationsViewModel() : this(null, null) { }
 
-    public ConfirmationsViewModel(Func<CancellationToken, Task>? refresh)
+    public ConfirmationsViewModel(
+        Func<CancellationToken, Task>? refresh,
+        Func<IReadOnlyList<ConfirmationViewModel>, bool, CancellationToken, Task>? bulkRespond = null)
     {
         _refresh = refresh;
+        _bulkRespond = bulkRespond;
         All.CollectionChanged += (_, _) => RebuildVisible();
         RebuildVisible();
     }
@@ -43,6 +50,9 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
         All.Clear();
         foreach (var c in confirmations) All.Add(c);
     }
+
+    /// <summary>Removes a single confirmation (after it has been resolved against Steam).</summary>
+    public void Remove(ConfirmationViewModel confirmation) => All.Remove(confirmation);
 
     public void SetLoading(bool value) => IsLoading = value;
 
@@ -55,6 +65,33 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
 
     [RelayCommand]
     private Task Refresh() => _refresh?.Invoke(CancellationToken.None) ?? Task.CompletedTask;
+
+    [RelayCommand]
+    private Task AcceptAllVisible() => BulkAsync(accept: true);
+
+    [RelayCommand]
+    private Task DenyAllVisible() => BulkAsync(accept: false);
+
+    private async Task BulkAsync(bool accept)
+    {
+        if (_bulkRespond is null || IsBulkBusy) return;
+        var snapshot = Visible.Where(v => v.IsActionable).ToList();
+        if (snapshot.Count == 0) return;
+
+        try
+        {
+            IsBulkBusy = true;
+            await _bulkRespond(snapshot, accept, CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LastError = ex.Message;
+        }
+        finally
+        {
+            IsBulkBusy = false;
+        }
+    }
 
     partial void OnActiveFilterChanged(ConfirmationFilter value) => RebuildVisible();
 

@@ -52,5 +52,7 @@ public enum ConfirmationType
     FeatureOptOut = 4,
     PhoneNumberChange = 5,
     AccountRecovery = 6,
+    AccountAuthentication = 8,
+    ApiKeyCreation = 11,
     Unknown = 999,
 }

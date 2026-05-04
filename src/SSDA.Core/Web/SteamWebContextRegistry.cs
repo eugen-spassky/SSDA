@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net.Http;
 using SSDA.Core.Models;
 using SSDA.Core.Services;
@@ -14,7 +13,8 @@ public sealed class SteamWebContextRegistry : IDisposable
 {
     private readonly TimeAligner _time;
     private readonly HttpClient _bareClient;
-    private readonly ConcurrentDictionary<ulong, AccountClient> _clients = new();
+    private readonly Dictionary<ulong, AccountClient> _clients = new();
+    private readonly object _gate = new();
     private bool _disposed;
 
     public SteamWebContextRegistry()
@@ -40,14 +40,23 @@ public sealed class SteamWebContextRegistry : IDisposable
         if (session.SteamID == 0)
             throw new InvalidOperationException("Account session has no SteamID.");
 
-        var entry = _clients.AddOrUpdate(
-            session.SteamID,
-            _ => CreateClient(session),
-            (_, existing) => existing.Token == session.AccessToken
-                ? existing
-                : DisposeAndReplace(existing, session));
+        HttpClient http;
+        lock (_gate)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(SteamWebContextRegistry));
 
-        return new SteamMobileConfClient(entry.Http, _time);
+            if (!_clients.TryGetValue(session.SteamID, out var entry)
+                || entry.Token != session.AccessToken)
+            {
+                entry?.Http.Dispose();
+                entry = CreateClient(session);
+                _clients[session.SteamID] = entry;
+            }
+            http = entry.Http;
+        }
+
+        return new SteamMobileConfClient(http, _time);
     }
 
     private static AccountClient CreateClient(SessionData session)
@@ -57,18 +66,15 @@ public sealed class SteamWebContextRegistry : IDisposable
         return new AccountClient(http, session.AccessToken!);
     }
 
-    private static AccountClient DisposeAndReplace(AccountClient existing, SessionData session)
-    {
-        existing.Http.Dispose();
-        return CreateClient(session);
-    }
-
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        foreach (var c in _clients.Values) c.Http.Dispose();
-        _clients.Clear();
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            foreach (var c in _clients.Values) c.Http.Dispose();
+            _clients.Clear();
+        }
         _bareClient.Dispose();
     }
 

@@ -135,34 +135,46 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ConfirmationsVm.SetLoading(true);
         var aggregate = new List<ConfirmationViewModel>();
         var errors = new List<string>();
-
-        foreach (var account in Accounts)
+        try
         {
-            if (!account.HasSession) continue;
-            try
+            foreach (var account in Accounts)
             {
-                var client = _webRegistry.GetMobileConfClient(account.Account);
-                var list = await client.ListAsync(account.Account, ct).ConfigureAwait(true);
-                foreach (var c in list)
-                    aggregate.Add(new ConfirmationViewModel(c, account.DisplayName));
+                if (!account.HasSession) continue;
+                try
+                {
+                    var client = _webRegistry.GetMobileConfClient(account.Account);
+                    var list = await client.ListAsync(account.Account, ct).ConfigureAwait(true);
+                    foreach (var c in list)
+                        aggregate.Add(new ConfirmationViewModel(c, account.DisplayName));
+                }
+                catch (SteamWebUnauthorizedException)
+                {
+                    errors.Add($"{account.DisplayName}: сессия истекла");
+                }
+                catch (HttpRequestException ex)
+                {
+                    errors.Add($"{account.DisplayName}: {ex.Message}");
+                }
+                catch (TaskCanceledException)
+                {
+                    errors.Add($"{account.DisplayName}: timeout");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    errors.Add($"{account.DisplayName}: {ex.Message}");
+                }
             }
-            catch (SteamWebUnauthorizedException)
-            {
-                errors.Add($"{account.DisplayName}: сессия истекла");
-            }
-            catch (HttpRequestException ex)
-            {
-                errors.Add($"{account.DisplayName}: {ex.Message}");
-            }
-            catch (TaskCanceledException)
-            {
-                errors.Add($"{account.DisplayName}: timeout");
-            }
+            ConfirmationsVm.Replace(aggregate);
+            ConfirmationsVm.LastError = string.Join(" · ", errors);
         }
-
-        ConfirmationsVm.Replace(aggregate);
-        ConfirmationsVm.SetLoading(false);
-        ConfirmationsVm.LastError = string.Join(" · ", errors);
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ConfirmationsVm.LastError = ex.Message;
+        }
+        finally
+        {
+            ConfirmationsVm.SetLoading(false);
+        }
     }
 
     public void Dispose()
@@ -185,7 +197,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ConfirmationsVm.Replace(Array.Empty<ConfirmationViewModel>());
 
         if (Accounts.Any(a => a.HasSession))
-            _ = RefreshConfirmationsAsync();
+            _ = SafeRefreshConfirmationsAsync();
+    }
+
+    private async Task SafeRefreshConfirmationsAsync()
+    {
+        try
+        {
+            await RefreshConfirmationsAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ConfirmationsVm.LastError = ex.Message;
+            ConfirmationsVm.SetLoading(false);
+        }
     }
 }
 

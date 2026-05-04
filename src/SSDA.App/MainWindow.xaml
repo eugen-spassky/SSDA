@@ -168,7 +168,7 @@
                            VerticalAlignment="Center"
                            Style="{StaticResource BodyMutedTextBlock}"
                            FontSize="10"
-                           Text="v0.1 · stage 1 · core ready" />
+                           Text="v0.1.0" />
             </Grid>
         </Border>
     </Grid>

@@ -27,7 +27,11 @@ public partial class MainWindow : Window
         var store = new ManifestStore(maFilesDir);
         _vm = new MainWindowViewModel(store);
         DataContext = _vm;
-        SourceInitialized += (_, _) => DwmBackdrop.Apply(this, DwmBackdrop.BackdropKind.Mica);
+        SourceInitialized += (_, _) =>
+        {
+            DwmBackdrop.Apply(this, DwmBackdrop.BackdropKind.Mica);
+            DwmBackdrop.ApplyCornerPreference(this, DwmBackdrop.CornerPreference.Round);
+        };
         Loaded += (_, _) =>
         {
             _tray = new TrayIconHost(this);

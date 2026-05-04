@@ -47,4 +47,10 @@
     <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
     <CornerRadius x:Key="PillCornerRadius">999</CornerRadius>
 
+    <!--
+        BooleanToVisibilityConverter is a built-in WPF class but not a built-in StaticResource;
+        we instantiate it here so any view in the app can reference it by key.
+    -->
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
 </ResourceDictionary>

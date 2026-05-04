@@ -36,10 +36,10 @@ public sealed partial class ConfirmationsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SetFilter(ConfirmationFilter filter)
+    private void SetFilter(string? filter)
     {
-        ActiveFilter = filter;
-        RebuildVisible();
+        if (Enum.TryParse<ConfirmationFilter>(filter, ignoreCase: true, out var parsed))
+            ActiveFilter = parsed;
     }
 
     partial void OnActiveFilterChanged(ConfirmationFilter value) => RebuildVisible();

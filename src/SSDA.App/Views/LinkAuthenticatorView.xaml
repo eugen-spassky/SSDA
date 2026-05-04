@@ -9,7 +9,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
     <UserControl.Resources>
         <cnv:InverseBooleanConverter x:Key="InverseBool" />
-        <cnv:EnumEqualsToBooleanConverter x:Key="EnumEqual" />
+        <cnv:EnumEqualsToVisibilityConverter x:Key="EnumVisible" />
     </UserControl.Resources>
     <Grid Background="#80000000">
         <Border HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -24,10 +24,8 @@
                            Text="Привязать авторизатор" />
 
                 <!--  Step 1: Credentials  -->
-                <StackPanel Margin="0,16,0,0">
-                    <StackPanel.Visibility>
-                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Credentials" />
-                    </StackPanel.Visibility>
+                <StackPanel Margin="0,16,0,0"
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Credentials}">
                     <TextBlock Style="{StaticResource BodyMutedTextBlock}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,18"
@@ -48,10 +46,8 @@
                 </StackPanel>
 
                 <!--  Step 2: SMS  -->
-                <StackPanel Margin="0,16,0,0">
-                    <StackPanel.Visibility>
-                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Sms" />
-                    </StackPanel.Visibility>
+                <StackPanel Margin="0,16,0,0"
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Sms}">
                     <TextBlock Style="{StaticResource BodyMutedTextBlock}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,18"
@@ -69,10 +65,8 @@
                 </StackPanel>
 
                 <!--  Step 3: Revocation  -->
-                <StackPanel Margin="0,16,0,0">
-                    <StackPanel.Visibility>
-                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Revocation" />
-                    </StackPanel.Visibility>
+                <StackPanel Margin="0,16,0,0"
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Revocation}">
                     <TextBlock Style="{StaticResource BodyMutedTextBlock}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,12"
@@ -90,10 +84,8 @@
                 </StackPanel>
 
                 <!--  Step 4: Done  -->
-                <StackPanel Margin="0,16,0,0">
-                    <StackPanel.Visibility>
-                        <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Done" />
-                    </StackPanel.Visibility>
+                <StackPanel Margin="0,16,0,0"
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Done}">
                     <TextBlock Style="{StaticResource BodyTextBlock}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,18"
@@ -120,39 +112,27 @@
                     <Button Style="{StaticResource GlassPrimaryButton}"
                             Content="ДАЛЕЕ"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
-                            Click="Credentials_Click">
-                        <Button.Visibility>
-                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Credentials" />
-                        </Button.Visibility>
-                    </Button>
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Credentials}"
+                            Click="Credentials_Click" />
 
                     <!--  Step 2 next button  -->
                     <Button Style="{StaticResource GlassPrimaryButton}"
                             Content="ПОДТВЕРДИТЬ"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
-                            Click="Sms_Click">
-                        <Button.Visibility>
-                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Sms" />
-                        </Button.Visibility>
-                    </Button>
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Sms}"
+                            Click="Sms_Click" />
 
                     <!--  Step 3 next button  -->
                     <Button Style="{StaticResource GlassPrimaryButton}"
                             Content="Я СОХРАНИЛ КОД"
-                            Command="{Binding RevocationAcknowledgedCommand}">
-                        <Button.Visibility>
-                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Revocation" />
-                        </Button.Visibility>
-                    </Button>
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Revocation}"
+                            Command="{Binding RevocationAcknowledgedCommand}" />
 
                     <!--  Step 4 finish button  -->
                     <Button Style="{StaticResource GlassPrimaryButton}"
                             Content="ГОТОВО"
-                            Command="{Binding FinishCommand}">
-                        <Button.Visibility>
-                            <Binding Path="Step" Converter="{StaticResource EnumEqual}" ConverterParameter="Done" />
-                        </Button.Visibility>
-                    </Button>
+                            Visibility="{Binding Step, Converter={StaticResource EnumVisible}, ConverterParameter=Done}"
+                            Command="{Binding FinishCommand}" />
                 </StackPanel>
             </StackPanel>
         </Border>

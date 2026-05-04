@@ -1,0 +1,100 @@
+<UserControl x:Class="SSDA.App.Views.ConfirmationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SSDA.App.ViewModels"
+             xmlns:cnv="clr-namespace:SSDA.App.Converters"
+             d:DataContext="{d:DesignInstance vm:ConfirmationsViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <UserControl.Resources>
+        <cnv:EnumEqualsToBooleanConverter x:Key="EnumEqualsToBool" />
+    </UserControl.Resources>
+
+    <Grid Margin="32,24,32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource H1TextBlock}" Text="Все подтверждения" />
+            <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                       Margin="0,4,0,0"
+                       Text="Трейды, маркет, логин, телефон, восстановление." />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,18,0,0">
+            <Button Style="{StaticResource GlassButton}"
+                    Margin="0,0,8,0" Content="ВСЕ"
+                    Command="{Binding SetFilterCommand}" CommandParameter="All" />
+            <Button Style="{StaticResource GlassButton}"
+                    Margin="0,0,8,0" Content="ТРЕЙДЫ"
+                    Command="{Binding SetFilterCommand}" CommandParameter="Trades" />
+            <Button Style="{StaticResource GlassButton}"
+                    Margin="0,0,8,0" Content="МАРКЕТ"
+                    Command="{Binding SetFilterCommand}" CommandParameter="Market" />
+            <Button Style="{StaticResource GlassButton}"
+                    Margin="0,0,8,0" Content="ЛОГИН"
+                    Command="{Binding SetFilterCommand}" CommandParameter="Login" />
+            <Button Style="{StaticResource GlassButton}"
+                    Content="ПРОЧЕЕ"
+                    Command="{Binding SetFilterCommand}" CommandParameter="Other" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,20,0,0">
+            <ItemsControl ItemsSource="{Binding Visible}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ConfirmationViewModel}">
+                        <Border Background="{StaticResource SurfaceElev1Brush}"
+                                BorderBrush="{StaticResource HairlineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource SurfaceCornerRadius}"
+                                Margin="0,0,0,8"
+                                Padding="16,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Style="{StaticResource LabelTextBlock}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding KindLabel}" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Style="{StaticResource BodyTextBlock}"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Headline}" />
+                                    <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                                               Margin="0,2,0,0"
+                                               Text="{Binding Summary}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2"
+                                           Style="{StaticResource BodyMutedTextBlock}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding AgeText}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Style="{StaticResource LabelTextBlock}"
+                           HorizontalAlignment="Center"
+                           Text="—" />
+                <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,0"
+                           Text="Нет подтверждений." />
+                <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                           HorizontalAlignment="Center"
+                           Margin="0,2,0,0"
+                           Text="Получение списка с Steam подключим в следующем PR." />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

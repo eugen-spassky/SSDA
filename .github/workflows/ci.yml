@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore SSDA.sln
+
+      - name: Build (Release)
+        run: dotnet build SSDA.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/SSDA.Core.Tests/SSDA.Core.Tests.csproj --configuration Release --no-build --verbosity normal
+
+  publish-windows-exe:
+    name: publish SSDA.exe (win-x64)
+    runs-on: windows-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish
+        run: dotnet publish src/SSDA.App/SSDA.App.csproj -c Release -r win-x64 --self-contained false -o publish
+
+      - name: Verify SSDA.exe
+        shell: pwsh
+        run: |
+          if (-not (Test-Path publish/SSDA.exe)) {
+            throw "SSDA.exe was not produced."
+          }
+          Get-Item publish/SSDA.exe | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SSDA-win-x64
+          path: publish/
+          retention-days: 14

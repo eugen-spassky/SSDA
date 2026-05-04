@@ -1,0 +1,42 @@
+<UserControl x:Class="SSDA.App.Views.PassphraseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SSDA.App.ViewModels"
+             d:DataContext="{d:DesignInstance vm:PassphraseViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <Grid Background="#80000000">
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{StaticResource SurfaceElev2Brush}"
+                BorderBrush="{StaticResource HairlineBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
+                Padding="28"
+                Width="380">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H1TextBlock}" Text="Введите passkey" />
+                <TextBlock Style="{StaticResource BodyMutedTextBlock}"
+                           TextWrapping="Wrap"
+                           Margin="0,6,0,18"
+                           Text="maFile зашифрован AES-256 + PBKDF2 (50 000 итераций). Без пароля доступ невозможен — мастер-ключа нет." />
+                <TextBlock Style="{StaticResource LabelTextBlock}"
+                           Text="PASSKEY" />
+                <PasswordBox x:Name="PassBox"
+                             Style="{StaticResource GlassPasswordBox}"
+                             Margin="0,8,0,0"
+                             KeyDown="PassBox_KeyDown" />
+                <TextBlock Style="{StaticResource BodyTextBlock}"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,8,0,0"
+                           FontSize="11"
+                           Text="{Binding ErrorMessage}" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                    <Button Style="{StaticResource GlassPrimaryButton}"
+                            Content="РАЗБЛОКИРОВАТЬ"
+                            Click="Unlock_Click" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,50 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--  Black-and-white liquid-glass palette. No accent colors anywhere.  -->
+    <!--  All hierarchy is expressed through opacity tiers and stroke weight.  -->
+
+    <!--  Surface tiers (drawn on top of the system Mica/Acrylic backdrop).  -->
+    <Color x:Key="SurfaceElev1Color">#0DFFFFFF</Color>
+    <Color x:Key="SurfaceElev2Color">#1AFFFFFF</Color>
+    <Color x:Key="SurfaceElev3Color">#26FFFFFF</Color>
+    <Color x:Key="SurfaceShadeColor">#33000000</Color>
+
+    <!--  Borders / hairlines.  -->
+    <Color x:Key="HairlineColor">#1AFFFFFF</Color>
+    <Color x:Key="HairlineStrongColor">#33FFFFFF</Color>
+
+    <!--  Text tiers.  -->
+    <Color x:Key="TextPrimaryColor">#EBFFFFFF</Color>
+    <Color x:Key="TextSecondaryColor">#9EFFFFFF</Color>
+    <Color x:Key="TextMutedColor">#61FFFFFF</Color>
+    <Color x:Key="TextFaintColor">#38FFFFFF</Color>
+
+    <!--  Brushes.  -->
+    <SolidColorBrush x:Key="SurfaceElev1Brush" Color="{StaticResource SurfaceElev1Color}" />
+    <SolidColorBrush x:Key="SurfaceElev2Brush" Color="{StaticResource SurfaceElev2Color}" />
+    <SolidColorBrush x:Key="SurfaceElev3Brush" Color="{StaticResource SurfaceElev3Color}" />
+    <SolidColorBrush x:Key="SurfaceShadeBrush" Color="{StaticResource SurfaceShadeColor}" />
+
+    <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource HairlineColor}" />
+    <SolidColorBrush x:Key="HairlineStrongBrush" Color="{StaticResource HairlineStrongColor}" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
+    <SolidColorBrush x:Key="TextFaintBrush" Color="{StaticResource TextFaintColor}" />
+
+    <SolidColorBrush x:Key="WindowBackdropFallbackBrush" Color="#CC18181B" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#FF000000" />
+
+    <!--  Easing for all animations.  -->
+    <CubicEase x:Key="StandardEasing" EasingMode="EaseOut" />
+
+    <!--  Common shape metrics.  -->
+    <CornerRadius x:Key="WindowCornerRadius">14</CornerRadius>
+    <CornerRadius x:Key="SurfaceCornerRadius">10</CornerRadius>
+    <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="PillCornerRadius">999</CornerRadius>
+
+</ResourceDictionary>

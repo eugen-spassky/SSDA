@@ -1,0 +1,27 @@
+<UserControl x:Class="SSDA.App.Controls.RingTimer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="120" Height="120"
+             Background="Transparent">
+    <Grid>
+        <!--  Track  -->
+        <Ellipse Stroke="{StaticResource HairlineBrush}"
+                 StrokeThickness="2"
+                 Margin="6" />
+
+        <!--  Progress arc  -->
+        <Path x:Name="ArcPath"
+              Stroke="{StaticResource TextPrimaryBrush}"
+              StrokeThickness="2"
+              StrokeStartLineCap="Round"
+              StrokeEndLineCap="Round" />
+
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock x:Name="SecondsText"
+                       Style="{StaticResource RingNumberTextBlock}"
+                       Text="30" />
+            <TextBlock Style="{StaticResource RingLabelTextBlock}"
+                       Text="SECONDS" />
+        </StackPanel>
+    </Grid>
+</UserControl>

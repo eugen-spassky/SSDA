@@ -42,7 +42,7 @@ public sealed class SteamMobileConfClient
             $"{MobileConfBase}/getlist" +
             $"?p={WebUtility.UrlEncode(account.DeviceID)}" +
             $"&a={session.SteamID}" +
-            $"&k={tag}" +
+            $"&k={WebUtility.UrlEncode(tag)}" +
             $"&t={time}" +
             $"&m=react" +
             $"&tag=list";
@@ -144,7 +144,7 @@ public sealed class SteamMobileConfClient
             $"?op={opTag}" +
             $"&p={WebUtility.UrlEncode(account.DeviceID)}" +
             $"&a={session.SteamID}" +
-            $"&k={k}" +
+            $"&k={WebUtility.UrlEncode(k)}" +
             $"&t={time}" +
             $"&m=react" +
             $"&tag={opTag}" +

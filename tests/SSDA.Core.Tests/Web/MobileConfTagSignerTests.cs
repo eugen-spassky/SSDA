@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using SSDA.Core.Web;
@@ -33,18 +32,24 @@ public sealed class MobileConfTagSignerTests
     }
 
     [Fact]
-    public void Sign_url_encodes_base64_padding()
+    public void Sign_returns_raw_base64_so_callers_control_url_encoding()
     {
-        // base64 outputs include '+', '/', '=' which must be percent-encoded.
+        // base64 outputs use '+', '/', '=' which must NOT be pre-encoded — the
+        // single-ajax / list paths URL-encode the result, but the multiajaxop POST
+        // path hands the value to FormUrlEncodedContent which encodes once on its
+        // own. Pre-encoding here would double-encode the form body.
         var output = MobileConfTagSigner.Sign(IdentitySecretBase64, 1700000000L, "list");
-        Assert.DoesNotContain('+', output);
-        Assert.DoesNotContain('/', output);
-        Assert.DoesNotContain('=', output);
+        Assert.Matches("^[A-Za-z0-9+/]+=*$", output);
+        // Should round-trip back to a valid 20-byte SHA-1 hash.
+        var bytes = Convert.FromBase64String(output);
+        Assert.Equal(20, bytes.Length);
     }
 
     /// <summary>
     /// Verbatim port of <c>GenerateConfirmationHashForTime</c> from the original
-    /// jessecar96/SteamDesktopAuthenticator. Used to lock the implementation byte-for-byte.
+    /// jessecar96/SteamDesktopAuthenticator, minus the trailing URL-encoding step
+    /// (the original always splices into a URL; we now return raw base64 so the
+    /// multiajaxop form body doesn't get double-encoded).
     /// </summary>
     private static string ReferenceSign(string identitySecret, long time, string tag)
     {
@@ -65,7 +70,6 @@ public sealed class MobileConfTagSignerTests
         Array.Copy(Encoding.UTF8.GetBytes(tag), 0, array, 8, n2 - 8);
         using var hmac = new HMACSHA1(key);
         var hash = hmac.ComputeHash(array);
-        var encoded = Convert.ToBase64String(hash, Base64FormattingOptions.None);
-        return WebUtility.UrlEncode(encoded)!;
+        return Convert.ToBase64String(hash, Base64FormattingOptions.None);
     }
 }

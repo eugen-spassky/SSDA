@@ -104,6 +104,39 @@ public sealed class SteamMobileConfClientAcceptDenyTests
     }
 
     [Fact]
+    public async Task AcceptManyAsync_does_not_double_encode_signature()
+    {
+        // Regression: FormUrlEncodedContent already URL-encodes its values, so the
+        // signature must be passed in raw base64 form. If MobileConfTagSigner pre-encoded
+        // the value, the form body would double-encode (e.g. '=' -> '%3D' -> '%253D')
+        // and Steam would reject every multiajaxop request with a signature mismatch.
+        var handler = NewHandler("""{"success":true}""", HttpStatusCode.OK);
+        var client = NewClient(handler);
+
+        await client.AcceptManyAsync(NewAccount(), new[] { NewConfirmation(id: 7, nonce: 8) });
+
+        var body = await handler.LastAjaxRequest!.Content!.ReadAsStringAsync();
+        var k = ExtractFormValue(body, "k");
+        Assert.False(string.IsNullOrEmpty(k));
+        Assert.DoesNotContain("%25", k); // double-encoded '%' would appear here
+        // The decoded value must round-trip to a valid 20-byte SHA-1 hash.
+        var decoded = Convert.FromBase64String(k!);
+        Assert.Equal(20, decoded.Length);
+    }
+
+    private static string? ExtractFormValue(string body, string name)
+    {
+        foreach (var pair in body.Split('&'))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq < 0) continue;
+            var key = WebUtility.UrlDecode(pair[..eq]);
+            if (key == name) return WebUtility.UrlDecode(pair[(eq + 1)..]);
+        }
+        return null;
+    }
+
+    [Fact]
     public async Task AcceptManyAsync_skips_request_for_empty_input()
     {
         var handler = NewHandler("""{"success":true}""", HttpStatusCode.OK);

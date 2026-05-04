@@ -116,6 +116,76 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         await SafeRefreshConfirmationsAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Trades the account's RefreshToken for a new AccessToken via Steam's auth endpoint
+    /// and persists the result. Returns <c>false</c> on any failure (no refresh token,
+    /// Steam refused, network error). The maFile is updated only on success.
+    /// </summary>
+    public async Task<bool> TryRefreshAccessTokenAsync(
+        AccountViewModel account, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        var session = account.Account.Session;
+        if (session is null || session.SteamID == 0 || string.IsNullOrEmpty(session.RefreshToken))
+            return false;
+
+        try
+        {
+            var result = await _login
+                .RefreshAccessTokenAsync(session.SteamID, session.RefreshToken!, ct)
+                .ConfigureAwait(true);
+
+            session.AccessToken = result.AccessToken;
+            session.RefreshToken = result.RefreshToken;
+            _store.SaveAccount(_manifest, account.Account, _passkey);
+            _store.SaveManifest(_manifest);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="op"/>; if it fails with <see cref="SteamWebUnauthorizedException"/>,
+    /// attempts a single silent token refresh and retries. The caller's exception is
+    /// re-thrown if refresh fails or the retry still 401s.
+    /// </summary>
+    private async Task<T> WithAutoRefreshAsync<T>(
+        AccountViewModel account,
+        Func<CancellationToken, Task<T>> op,
+        CancellationToken ct)
+    {
+        try
+        {
+            return await op(ct).ConfigureAwait(true);
+        }
+        catch (SteamWebUnauthorizedException)
+        {
+            if (await TryRefreshAccessTokenAsync(account, ct).ConfigureAwait(true))
+                return await op(ct).ConfigureAwait(true);
+            throw;
+        }
+    }
+
+    private async Task WithAutoRefreshAsync(
+        AccountViewModel account,
+        Func<CancellationToken, Task> op,
+        CancellationToken ct)
+    {
+        try
+        {
+            await op(ct).ConfigureAwait(true);
+        }
+        catch (SteamWebUnauthorizedException)
+        {
+            if (await TryRefreshAccessTokenAsync(account, ct).ConfigureAwait(true))
+                await op(ct).ConfigureAwait(true);
+            else throw;
+        }
+    }
+
     /// <summary>Loads the manifest in plaintext; sets <see cref="IsLocked"/> if encrypted.</summary>
     public void LoadManifest()
     {
@@ -214,8 +284,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 if (!account.HasSession) continue;
                 try
                 {
-                    var client = _webRegistry.GetMobileConfClient(account.Account);
-                    var list = await client.ListAsync(account.Account, token).ConfigureAwait(true);
+                    var list = await WithAutoRefreshAsync(
+                        account,
+                        innerCt =>
+                        {
+                            var client = _webRegistry.GetMobileConfClient(account.Account);
+                            return client.ListAsync(account.Account, innerCt);
+                        },
+                        token).ConfigureAwait(true);
                     foreach (var c in list)
                         aggregate.Add(new ConfirmationViewModel(c, account, RespondAsync));
                 }
@@ -283,13 +359,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(confirmation);
-        var client = _webRegistry.GetMobileConfClient(confirmation.Account.Account);
-        if (accept)
-            await client.AcceptAsync(confirmation.Account.Account, confirmation.Source, ct)
-                .ConfigureAwait(true);
-        else
-            await client.DenyAsync(confirmation.Account.Account, confirmation.Source, ct)
-                .ConfigureAwait(true);
+        await WithAutoRefreshAsync(
+            confirmation.Account,
+            async innerCt =>
+            {
+                var client = _webRegistry.GetMobileConfClient(confirmation.Account.Account);
+                if (accept)
+                    await client.AcceptAsync(confirmation.Account.Account, confirmation.Source, innerCt)
+                        .ConfigureAwait(true);
+                else
+                    await client.DenyAsync(confirmation.Account.Account, confirmation.Source, innerCt)
+                        .ConfigureAwait(true);
+            },
+            ct).ConfigureAwait(true);
         ConfirmationsVm.Remove(confirmation);
     }
 
@@ -314,12 +396,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             try
             {
                 foreach (var item in batch) item.IsBusy = true;
-                var client = _webRegistry.GetMobileConfClient(account.Account);
                 var sources = batch.Select(b => b.Source).ToList();
-                if (accept)
-                    await client.AcceptManyAsync(account.Account, sources, ct).ConfigureAwait(true);
-                else
-                    await client.DenyManyAsync(account.Account, sources, ct).ConfigureAwait(true);
+                await WithAutoRefreshAsync(
+                    account,
+                    async innerCt =>
+                    {
+                        var client = _webRegistry.GetMobileConfClient(account.Account);
+                        if (accept)
+                            await client.AcceptManyAsync(account.Account, sources, innerCt).ConfigureAwait(true);
+                        else
+                            await client.DenyManyAsync(account.Account, sources, innerCt).ConfigureAwait(true);
+                    },
+                    ct).ConfigureAwait(true);
                 foreach (var item in batch)
                 {
                     item.IsResolved = true;

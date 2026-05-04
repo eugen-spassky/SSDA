@@ -40,6 +40,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось изменить автозапуск: " + ex.Message;
+            // Revert the property so the checkbox reflects the real registry state. The
+            // observable setter has already stored `value` into the backing field, so
+            // we have to overwrite it manually + raise PropertyChanged ourselves.
+            _autostartEnabled = !value;
+            OnPropertyChanged(nameof(AutostartEnabled));
         }
     }
 

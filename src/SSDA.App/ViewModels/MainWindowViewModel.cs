@@ -101,8 +101,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             if (result.ImportedCount > 0)
             {
                 // Reload everything to pick up the new entries with their re-encrypted
-                // bodies. LoadManifest is cheap and keeps the UI in lockstep with disk.
-                LoadManifest();
+                // bodies. We can't call LoadManifest() here because it sets IsLocked=true
+                // for encrypted manifests — even though we already hold the passkey in
+                // memory and the user is authenticated. Reload directly with `_passkey`
+                // to keep the session unlocked.
+                _manifest = _store.LoadManifest();
+                HasManifest = true;
+                ApplyAccounts(_store.LoadAccounts(_manifest, _passkey));
             }
 
             var msg = $"Импортировано: {result.ImportedCount}, пропущено: {result.SkippedCount}";

@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public PassphraseViewModel PassphraseVm { get; }
     public LoginViewModel LoginVm { get; }
     public LinkAuthenticatorViewModel LinkVm { get; }
+    public SettingsViewModel SettingsVm { get; }
 
     [ObservableProperty]
     private AccountViewModel? _selectedAccount;
@@ -71,7 +72,50 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         PassphraseVm = new PassphraseViewModel(TryUnlock);
         LoginVm = new LoginViewModel(LoginAsync);
         LinkVm = new LinkAuthenticatorViewModel(LinkSignInAsync, LinkFinalizeAsync, LinkPersist);
+        SettingsVm = new SettingsViewModel(ImportLegacy);
         HasManifest = _store.ManifestExists();
+    }
+
+    /// <summary>
+    /// Imports the legacy SDA's <c>maFiles</c> directory at <paramref name="sourceDir"/>.
+    /// Decrypts with <paramref name="sourcePasskey"/> if supplied; re-encrypts with the
+    /// passkey the user already typed at unlock time. Refreshes the in-memory account
+    /// list on success and persists the manifest.
+    /// </summary>
+    private ImportRequestResult ImportLegacy(string sourceDir, string? sourcePasskey, string? destinationPasskey)
+    {
+        // SettingsViewModel currently passes nulls for both — we use whichever passkey
+        // the user already supplied at unlock time on this side.
+        _ = sourcePasskey;
+        _ = destinationPasskey;
+
+        try
+        {
+            var result = MaFileImporter.Import(
+                sourceDir,
+                sourcePasskey: null,
+                _manifest,
+                _store,
+                _passkey);
+
+            if (result.ImportedCount > 0)
+            {
+                // Reload everything to pick up the new entries with their re-encrypted
+                // bodies. LoadManifest is cheap and keeps the UI in lockstep with disk.
+                LoadManifest();
+            }
+
+            var msg = $"Импортировано: {result.ImportedCount}, пропущено: {result.SkippedCount}";
+            if (result.Errors.Count > 0) msg += $", ошибок: {result.Errors.Count}";
+            return new ImportRequestResult { StatusMessage = msg };
+        }
+        catch (InvalidPasskeyException)
+        {
+            return new ImportRequestResult
+            {
+                StatusMessage = "Источник зашифрован другим passkey. Импорт plaintext-папки или с тем же passkey пока не поддерживается через UI.",
+            };
+        }
     }
 
     [RelayCommand]
@@ -336,6 +380,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         await RefreshConfirmationsAsync();
     }
 
+    [RelayCommand]
+    private void NavigateToSettings() => ActivePage = MainPage.Settings;
+
     partial void OnSelectedAccountChanged(AccountViewModel? value) => CodeVm.SetAccount(value);
 
     /// <summary>
@@ -549,4 +596,5 @@ public enum MainPage
 {
     Accounts,
     Confirmations,
+    Settings,
 }

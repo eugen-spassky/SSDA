@@ -37,6 +37,10 @@ public sealed class SteamMobileConfClient
             throw new InvalidOperationException("Account is missing identity_secret.");
         if (string.IsNullOrEmpty(account.DeviceID))
             throw new InvalidOperationException("Account is missing device_id.");
+        var session = account.Session
+            ?? throw new InvalidOperationException("Account is missing a Session.");
+        if (session.SteamID == 0)
+            throw new InvalidOperationException("Account session has no SteamID.");
 
         var time = await _time.GetSteamTimeAsync(ct).ConfigureAwait(false);
         var tag = MobileConfTagSigner.Sign(account.IdentitySecret, time, "list");
@@ -44,7 +48,7 @@ public sealed class SteamMobileConfClient
         var url =
             $"{MobileConfBase}/getlist" +
             $"?p={WebUtility.UrlEncode(account.DeviceID)}" +
-            $"&a={account.Session?.SteamID}" +
+            $"&a={session.SteamID}" +
             $"&k={tag}" +
             $"&t={time}" +
             $"&m=react" +

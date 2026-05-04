@@ -155,7 +155,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     errors.Add($"{account.DisplayName}: {ex.Message}");
                 }
-                catch (TaskCanceledException)
+                catch (TaskCanceledException) when (!ct.IsCancellationRequested)
                 {
                     errors.Add($"{account.DisplayName}: timeout");
                 }

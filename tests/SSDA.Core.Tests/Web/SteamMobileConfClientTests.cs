@@ -94,6 +94,33 @@ public sealed class SteamMobileConfClientTests
     }
 
     [Fact]
+    public async Task ListAsync_throws_when_device_id_missing()
+    {
+        var client = BuildClient("{}", HttpStatusCode.OK);
+        var bad = NewAccount();
+        bad.DeviceID = null;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.ListAsync(bad));
+    }
+
+    [Fact]
+    public async Task ListAsync_throws_when_session_missing()
+    {
+        var client = BuildClient("{}", HttpStatusCode.OK);
+        var bad = NewAccount();
+        bad.Session = null;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.ListAsync(bad));
+    }
+
+    [Fact]
+    public async Task ListAsync_throws_when_steamid_zero()
+    {
+        var client = BuildClient("{}", HttpStatusCode.OK);
+        var bad = NewAccount();
+        bad.Session!.SteamID = 0;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.ListAsync(bad));
+    }
+
+    [Fact]
     public async Task ListAsync_signs_request_with_list_tag()
     {
         const string json = """{"success":true,"conf":[]}""";

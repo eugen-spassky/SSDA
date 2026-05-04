@@ -52,7 +52,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         _ownsRegistry = webRegistry is null;
         _webRegistry = webRegistry ?? new SteamWebContextRegistry();
         CodeVm = new CodeViewModel(clock);
-        ConfirmationsVm = new ConfirmationsViewModel(RefreshConfirmationsAsync);
+        ConfirmationsVm = new ConfirmationsViewModel(
+            RefreshConfirmationsAsync,
+            BulkRespondAsync);
         PassphraseVm = new PassphraseViewModel(TryUnlock);
         HasManifest = _store.ManifestExists();
     }
@@ -158,7 +160,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                     var client = _webRegistry.GetMobileConfClient(account.Account);
                     var list = await client.ListAsync(account.Account, token).ConfigureAwait(true);
                     foreach (var c in list)
-                        aggregate.Add(new ConfirmationViewModel(c, account.DisplayName));
+                        aggregate.Add(new ConfirmationViewModel(c, account, RespondAsync));
                 }
                 catch (SteamWebUnauthorizedException)
                 {
@@ -212,6 +214,74 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             _refreshCts = null;
         }
         if (_ownsRegistry) _webRegistry.Dispose();
+    }
+
+    /// <summary>
+    /// Accept (<paramref name="accept"/>=true) or deny (<paramref name="accept"/>=false)
+    /// a single confirmation against Steam, then remove it from the list on success.
+    /// </summary>
+    public async Task RespondAsync(
+        ConfirmationViewModel confirmation,
+        bool accept,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(confirmation);
+        var client = _webRegistry.GetMobileConfClient(confirmation.Account.Account);
+        if (accept)
+            await client.AcceptAsync(confirmation.Account.Account, confirmation.Source, ct)
+                .ConfigureAwait(true);
+        else
+            await client.DenyAsync(confirmation.Account.Account, confirmation.Source, ct)
+                .ConfigureAwait(true);
+        ConfirmationsVm.Remove(confirmation);
+    }
+
+    /// <summary>
+    /// Bulk accept / deny: groups <paramref name="items"/> by account and posts a single
+    /// <c>multiajaxop</c> request per account.
+    /// </summary>
+    public async Task BulkRespondAsync(
+        IReadOnlyList<ConfirmationViewModel> items,
+        bool accept,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        if (items.Count == 0) return;
+
+        var errors = new List<string>();
+        var resolved = new List<ConfirmationViewModel>();
+        foreach (var group in items.GroupBy(i => i.Account))
+        {
+            var account = group.Key;
+            var batch = group.ToList();
+            try
+            {
+                foreach (var item in batch) item.IsBusy = true;
+                var client = _webRegistry.GetMobileConfClient(account.Account);
+                var sources = batch.Select(b => b.Source).ToList();
+                if (accept)
+                    await client.AcceptManyAsync(account.Account, sources, ct).ConfigureAwait(true);
+                else
+                    await client.DenyManyAsync(account.Account, sources, ct).ConfigureAwait(true);
+                foreach (var item in batch)
+                {
+                    item.IsResolved = true;
+                    item.Resolution = accept ? "Принято" : "Отклонено";
+                    resolved.Add(item);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                errors.Add($"{account.DisplayName}: {ex.Message}");
+            }
+            finally
+            {
+                foreach (var item in batch) item.IsBusy = false;
+            }
+        }
+
+        foreach (var item in resolved) ConfirmationsVm.Remove(item);
+        ConfirmationsVm.LastError = string.Join(" · ", errors);
     }
 
     private void ApplyAccounts(

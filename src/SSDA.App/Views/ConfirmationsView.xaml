@@ -10,6 +10,7 @@
     <UserControl.Resources>
         <cnv:EnumEqualsToBooleanConverter x:Key="EnumEqualsToBool" />
         <cnv:InverseBooleanConverter x:Key="InverseBool" />
+        <cnv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <cnv:StringNotEmptyToVisibilityConverter x:Key="StringToVisibility" />
     </UserControl.Resources>
 
@@ -32,12 +33,22 @@
                            Margin="0,4,0,0"
                            Text="Трейды, маркет, логин, телефон, восстановление." />
             </StackPanel>
-            <Button Grid.Column="1"
-                    Style="{StaticResource GlassButton}"
-                    VerticalAlignment="Center"
-                    Content="ОБНОВИТЬ"
-                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}"
-                    Command="{Binding RefreshCommand}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource GlassButton}"
+                        Margin="0,0,8,0"
+                        Content="ОТКЛОНИТЬ ВСЕ"
+                        IsEnabled="{Binding IsBulkBusy, Converter={StaticResource InverseBool}}"
+                        Command="{Binding DenyAllVisibleCommand}" />
+                <Button Style="{StaticResource GlassButton}"
+                        Margin="0,0,8,0"
+                        Content="ПРИНЯТЬ ВСЕ"
+                        IsEnabled="{Binding IsBulkBusy, Converter={StaticResource InverseBool}}"
+                        Command="{Binding AcceptAllVisibleCommand}" />
+                <Button Style="{StaticResource GlassButton}"
+                        Content="ОБНОВИТЬ"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}"
+                        Command="{Binding RefreshCommand}" />
+            </StackPanel>
         </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,18,0,0">
@@ -87,6 +98,7 @@
                                         <ColumnDefinition Width="80" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
                                                Style="{StaticResource LabelTextBlock}"
@@ -107,7 +119,27 @@
                                     <TextBlock Grid.Column="2"
                                                Style="{StaticResource BodyMutedTextBlock}"
                                                VerticalAlignment="Center"
+                                               Margin="0,0,16,0"
                                                Text="{Binding AgeText}" />
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding IsResolved, Converter={StaticResource InverseBoolToVisibility}}">
+                                        <Button Style="{StaticResource GlassButton}"
+                                                Margin="0,0,6,0"
+                                                Content="ОТКЛОНИТЬ"
+                                                IsEnabled="{Binding IsActionable}"
+                                                Command="{Binding DenyCommand}" />
+                                        <Button Style="{StaticResource GlassButton}"
+                                                Content="ПРИНЯТЬ"
+                                                IsEnabled="{Binding IsActionable}"
+                                                Command="{Binding AcceptCommand}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="3"
+                                               Style="{StaticResource LabelTextBlock}"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding Resolution}"
+                                               Visibility="{Binding IsResolved, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

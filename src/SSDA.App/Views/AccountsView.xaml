@@ -76,8 +76,7 @@
                         HorizontalAlignment="Stretch"
                         Margin="6,12,6,0"
                         Content="+  ADD ACCOUNT"
-                        IsEnabled="False"
-                        ToolTip="Привязка авторизатора будет в следующем PR." />
+                        Command="{Binding OpenLinkAuthenticatorCommand}" />
             </Grid>
         </Border>
 

@@ -3,6 +3,7 @@ using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SSDA.Core.Auth;
+using SSDA.Core.Linking;
 using SSDA.Core.Models;
 using SSDA.Core.Services;
 using SSDA.Core.Web;
@@ -29,6 +30,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public ConfirmationsViewModel ConfirmationsVm { get; }
     public PassphraseViewModel PassphraseVm { get; }
     public LoginViewModel LoginVm { get; }
+    public LinkAuthenticatorViewModel LinkVm { get; }
 
     [ObservableProperty]
     private AccountViewModel? _selectedAccount;
@@ -46,24 +48,105 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _statusText = string.Empty;
 
     private readonly SteamLoginClient _login;
+    private readonly AuthenticatorLinker _linker;
+    private readonly HttpClient _linkerHttp;
 
     public MainWindowViewModel(
         ManifestStore store,
         ISystemClock? clock = null,
         SteamWebContextRegistry? webRegistry = null,
-        SteamLoginClient? loginClient = null)
+        SteamLoginClient? loginClient = null,
+        AuthenticatorLinker? linker = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _ownsRegistry = webRegistry is null;
         _webRegistry = webRegistry ?? new SteamWebContextRegistry();
         _login = loginClient ?? new SteamLoginClient();
+        _linkerHttp = new HttpClient();
+        _linker = linker ?? new AuthenticatorLinker(_linkerHttp, _webRegistry.TimeAligner);
         CodeVm = new CodeViewModel(clock);
         ConfirmationsVm = new ConfirmationsViewModel(
             RefreshConfirmationsAsync,
             BulkRespondAsync);
         PassphraseVm = new PassphraseViewModel(TryUnlock);
         LoginVm = new LoginViewModel(LoginAsync);
+        LinkVm = new LinkAuthenticatorViewModel(LinkSignInAsync, LinkFinalizeAsync, LinkPersist);
         HasManifest = _store.ManifestExists();
+    }
+
+    [RelayCommand]
+    private void OpenLinkAuthenticator() => LinkVm.Open();
+
+    /// <summary>
+    /// Step 1 of linking: signs the user in (no existing 2FA assumed) and immediately
+    /// posts <c>AddAuthenticator</c> so Steam dispatches the activation SMS.
+    /// </summary>
+    private async Task<LinkAuthenticatorContext> LinkSignInAsync(
+        string username, string password, CancellationToken ct)
+    {
+        var login = await _login
+            .LoginAsync(username, password, new EmptyAuthenticator(), ct)
+            .ConfigureAwait(true);
+
+        var deviceId = AuthenticatorLinker.GenerateDeviceId();
+        var (linkResult, account) = await _linker
+            .AddAuthenticatorAsync(login.SteamID, login.AccessToken, deviceId, ct)
+            .ConfigureAwait(true);
+
+        switch (linkResult)
+        {
+            case LinkResult.MustProvidePhoneNumber:
+                throw new InvalidOperationException(
+                    "К аккаунту не привязан номер телефона. Привяжите номер через Steam, потом повторите.");
+            case LinkResult.AuthenticatorPresent:
+                throw new InvalidOperationException(
+                    "К аккаунту уже привязан Steam Guard. Сначала отвяжите старый авторизатор.");
+            case LinkResult.GeneralFailure:
+                throw new InvalidOperationException("Steam отказал в привязке.");
+        }
+
+        if (account is null)
+            throw new InvalidOperationException("Steam вернул пустой ответ.");
+
+        // Wire the session onto the new account so the rest of the app can use it directly.
+        account.AccountName = username;
+        account.Session = new SessionData
+        {
+            SteamID = login.SteamID,
+            AccessToken = login.AccessToken,
+            RefreshToken = login.RefreshToken,
+        };
+
+        return new LinkAuthenticatorContext
+        {
+            SteamId = login.SteamID,
+            AccessToken = login.AccessToken,
+            RefreshToken = login.RefreshToken,
+            Account = account,
+        };
+    }
+
+    /// <summary>
+    /// Step 2 of linking: passes the user-entered SMS code to <c>FinalizeAsync</c>. Loops
+    /// inside the linker if Steam needs additional code samples for clock alignment.
+    /// </summary>
+    private Task<FinalizeResult> LinkFinalizeAsync(
+        LinkAuthenticatorContext ctx, string smsCode, CancellationToken ct)
+        => _linker.FinalizeAsync(ctx.SteamId, ctx.AccessToken, ctx.Account, smsCode, ct);
+
+    /// <summary>
+    /// Step 3 of linking: persists the new maFile under the current passkey and adds the
+    /// account to the in-memory list so the user sees it immediately.
+    /// </summary>
+    private void LinkPersist(LinkAuthenticatorContext ctx)
+    {
+        _store.SaveAccount(_manifest, ctx.Account, _passkey);
+        _store.SaveManifest(_manifest);
+
+        var avm = new AccountViewModel(ctx.Account);
+        Accounts.Add(avm);
+        SelectedAccount = avm;
+        StatusText = $"Добавлен: {avm.DisplayName}";
     }
 
     /// <summary>
@@ -347,6 +430,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             _refreshCts = null;
         }
         if (_ownsRegistry) _webRegistry.Dispose();
+        _linkerHttp.Dispose();
     }
 
     /// <summary>

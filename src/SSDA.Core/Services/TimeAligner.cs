@@ -68,6 +68,13 @@ public sealed class TimeAligner
         public QueryTimeResponse? Response { get; set; }
     }
 
+    /// <remarks>
+    /// Steam's <c>QueryTime</c> endpoint returns every numeric field as a JSON string
+    /// (e.g. <c>"server_time": "1700000000"</c>). System.Text.Json defaults to
+    /// <see cref="JsonNumberHandling.Strict"/>, which would refuse to coerce, so we opt every
+    /// numeric property into <see cref="JsonNumberHandling.AllowReadingFromString"/>.
+    /// </remarks>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     private sealed class QueryTimeResponse
     {
         [JsonPropertyName("server_time")]

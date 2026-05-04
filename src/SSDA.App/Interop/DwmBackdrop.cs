@@ -17,6 +17,7 @@ public static class DwmBackdrop
     private const int DwmwaSystemBackdropType = 38;
     private const int DwmwaCaptionColor = 35;
     private const int DwmwaBorderColor = 34;
+    private const int DwmwaWindowCornerPreference = 33;
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int pvAttribute, int cbAttribute);
@@ -32,6 +33,19 @@ public static class DwmBackdrop
         Acrylic = 3,
         /// <summary>Mica Alt (a.k.a. tabbed) — variant tinted toward the desktop wallpaper.</summary>
         MicaAlt = 4,
+    }
+
+    /// <summary>Window corner radius preference exposed via the DWM API on Windows 11.</summary>
+    public enum CornerPreference
+    {
+        /// <summary>OS default (typically rounded on Win11).</summary>
+        Default = 0,
+        /// <summary>Square (no rounding).</summary>
+        DoNotRound = 1,
+        /// <summary>Round with the standard radius (8 px on Win11).</summary>
+        Round = 2,
+        /// <summary>Round with a smaller radius (4 px on Win11) — for menus/tooltips.</summary>
+        RoundSmall = 3,
     }
 
     /// <summary>
@@ -58,5 +72,22 @@ public static class DwmBackdrop
         {
             window.Background = (Brush)window.FindResource("WindowBackdropFallbackBrush");
         }
+    }
+
+    /// <summary>
+    /// Asks the DWM to render <paramref name="window"/> with rounded corners. On
+    /// Windows 11 this rounds the actual frame at the compositor level so the result
+    /// works with both system and custom title bars; on older Windows versions the
+    /// call silently no-ops and corners remain square.
+    /// </summary>
+    public static void ApplyCornerPreference(Window window, CornerPreference preference = CornerPreference.Round)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        var helper = new WindowInteropHelper(window);
+        var hwnd = helper.EnsureHandle();
+
+        var value = (int)preference;
+        DwmSetWindowAttribute(hwnd, DwmwaWindowCornerPreference, ref value, sizeof(int));
     }
 }

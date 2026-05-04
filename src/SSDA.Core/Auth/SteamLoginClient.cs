@@ -101,6 +101,73 @@ public sealed class SteamLoginClient
         }
     }
 
+    /// <summary>
+    /// Exchanges an existing <paramref name="refreshToken"/> for a fresh access token via
+    /// <c>SteamAuthentication.GenerateAccessTokenForAppAsync</c>. Optionally also issues a
+    /// new refresh token (when <c>allowRenewal=true</c> and Steam decides to rotate it).
+    /// </summary>
+    /// <returns>
+    /// A <see cref="SteamLoginResult"/> with the new <c>AccessToken</c>; <c>RefreshToken</c>
+    /// is the freshly-issued one if Steam rotated it, otherwise echoes the input.
+    /// <c>AccountName</c> and <c>NewGuardData</c> are empty/null — Steam does not return
+    /// them on this endpoint.
+    /// </returns>
+    public async Task<SteamLoginResult> RefreshAccessTokenAsync(
+        ulong steamId, string refreshToken, CancellationToken ct = default)
+    {
+        if (steamId == 0)
+            throw new ArgumentException("steamId must be non-zero.", nameof(steamId));
+        if (string.IsNullOrEmpty(refreshToken))
+            throw new ArgumentException("refreshToken is required.", nameof(refreshToken));
+
+        var client = _clientFactory();
+        var manager = new CallbackManager(client);
+
+        using var pumpCts = new CancellationTokenSource();
+        var pump = Task.Run(() =>
+        {
+            while (!pumpCts.IsCancellationRequested)
+                manager.RunWaitCallbacks(TimeSpan.FromMilliseconds(100));
+        }, CancellationToken.None);
+
+        try
+        {
+            await ConnectAsync(client, manager, ct).ConfigureAwait(false);
+
+            AccessTokenGenerateResult result;
+            try
+            {
+                result = await client.Authentication
+                    .GenerateAccessTokenForAppAsync(new SteamID(steamId), refreshToken, allowRenewal: true)
+                    .ConfigureAwait(false);
+            }
+            catch (AuthenticationException ex)
+            {
+                throw new SteamLoginException(
+                    "Steam refused the refresh token. Re-authenticate with username + password.", ex);
+            }
+
+            if (string.IsNullOrEmpty(result.AccessToken))
+                throw new SteamLoginException(
+                    "Steam returned an empty access token. The refresh token may be expired.");
+
+            return new SteamLoginResult(
+                SteamID: steamId,
+                AccountName: string.Empty,
+                AccessToken: result.AccessToken,
+                // If Steam did not rotate the refresh token it returns an empty string —
+                // keep using the one we passed in.
+                RefreshToken: string.IsNullOrEmpty(result.RefreshToken) ? refreshToken : result.RefreshToken,
+                NewGuardData: null);
+        }
+        finally
+        {
+            try { client.Disconnect(); } catch { /* best-effort */ }
+            pumpCts.Cancel();
+            try { await pump.ConfigureAwait(false); } catch { /* swallow */ }
+        }
+    }
+
     private async Task ConnectAsync(SteamClient client, CallbackManager manager, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<SteamClient.ConnectedCallback>(

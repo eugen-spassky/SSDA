@@ -36,6 +36,26 @@ public class SteamLoginClientTests
     }
 
     [Fact]
+    public async Task RefreshAccessTokenAsync_throws_when_steamId_is_zero()
+    {
+        var client = new SteamLoginClient();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.RefreshAccessTokenAsync(0, "refresh"));
+    }
+
+    [Fact]
+    public async Task RefreshAccessTokenAsync_throws_when_refreshToken_is_empty()
+    {
+        var client = new SteamLoginClient();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.RefreshAccessTokenAsync(76561198000000000UL, ""));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.RefreshAccessTokenAsync(76561198000000000UL, null!));
+    }
+
+    [Fact]
     public void SteamLoginResult_carries_all_fields_through_record_equality()
     {
         var a = new SteamLoginResult(
